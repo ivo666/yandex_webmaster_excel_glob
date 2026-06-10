@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.orm import DeclarativeBase, sessionmaker, Mapped, mapped_column
 from sqlalchemy import Column, Integer, String, Float, DateTime, Date, Boolean, Text, MetaData
+from sqlalchemy import func
 from datetime import datetime
 import os
 import logging
@@ -77,15 +78,56 @@ class WebmAgg(Base):
     position: Mapped[float] = mapped_column(Float, nullable=True)
     clicks: Mapped[int] = mapped_column(Integer, nullable=True)
 
-# Этот класс пранируется перенести в следующий ORM-слоей
-# class WebmPos(Base):
-    # __tablename__ = "webmaster_positions"
-    # __table_args__ = {"schema": "ppl"}
+# ==========================================
+# СЛОЙ PPL_LOOKUP (Накопительные реестры сущностей)
+# ==========================================
+class LookupDate(Base):
+    __tablename__ = "date_unique"
+    __table_args__ = {"schema": "ppl_lookup"}
 
-    # id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # impressions: Mapped[int] = mapped_column(Integer, nullable=True)
-    # impression_order: Mapped[int] = mapped_column(Integer, nullable=True)
-    # click: Mapped[bool] = mapped_column(Boolean, nullable=True)
+    # Дата сама по себе уникальна, делаем её первичным ключом
+    dt: Mapped[datetime.date] = mapped_column(Date, primary_key=True)
+    # Техническое поле: когда дата впервые появилась в системе
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, 
+        server_default=func.now()
+    )
+
+    def __repr__(self) -> str:
+        return f"<LookupDate {self.dt}>"
+
+
+class LookupQuery(Base):
+    __tablename__ = "query_unique"
+    __table_args__ = {"schema": "ppl_lookup"}
+
+    # Текст запроса уникален. Ограничиваем первичным ключом, 
+    # чтобы работал ON CONFLICT DO NOTHING
+    query: Mapped[str] = mapped_column(Text, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, 
+        server_default=func.now()
+    )
+
+    def __repr__(self) -> str:
+        query_str = self.query[:20] if self.query else "None"
+        return f"<LookupQuery '{query_str}...'>"
+
+
+class LookupPage(Base):
+    __tablename__ = "page_unique"
+    __table_args__ = {"schema": "ppl_lookup"}
+
+    # URL-путь уникален и является первичным ключом
+    page_path: Mapped[str] = mapped_column(Text, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, 
+        server_default=func.now()
+    )
+
+    def __repr__(self) -> str:
+        path_str = self.page_path[:20] if self.page_path else "None"
+        return f"<LookupPage '{path_str}...'>"
 
 
 # ==========================================
@@ -121,6 +163,7 @@ if __name__ == "__main__":
         with remote_engine.connect() as connection:
             connection.execute(text("CREATE SCHEMA IF NOT EXISTS rdl;"))
             connection.execute(text("CREATE SCHEMA IF NOT EXISTS ppl;"))
+            connection.execute(text("CREATE SCHEMA IF NOT EXISTS ppl_lookup;"))
             connection.commit()
         # Синхронизируем модели с удаленным движком
         Base.metadata.create_all(bind=remote_engine)
