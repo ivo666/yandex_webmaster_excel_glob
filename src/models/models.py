@@ -128,6 +128,76 @@ class LookupPage(Base):
     def __repr__(self) -> str:
         path_str = self.page_path[:20] if self.page_path else "None"
         return f"<LookupPage '{path_str}...'>"
+    
+# ==========================================
+# СЛОЙ DDM (Аналитические измерения и факты по твоей схеме)
+# ==========================================
+
+class QueryDimension(Base):
+    __tablename__ = "query_dimension"
+    __table_args__ = {"schema": "ddm"}
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    query: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    is_brand_query: Mapped[bool] = mapped_column(Boolean, nullable=True)
+    whos_brand: Mapped[str] = mapped_column(Text, nullable=True)
+    query_type: Mapped[str] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class PageDimension(Base):
+    __tablename__ = "page_dimension"
+    __table_args__ = {"schema": "ddm"}
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    page_path: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    site_section: Mapped[str] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class DateDimension(Base):
+    __tablename__ = "date_dimension"
+    __table_args__ = {"schema": "ddm"}
+
+    dt: Mapped[datetime.date] = mapped_column(Date, primary_key=True)
+    year: Mapped[int] = mapped_column(Integer, nullable=False)
+    month: Mapped[int] = mapped_column(Integer, nullable=False)
+    day_of_week: Mapped[int] = mapped_column(Integer, nullable=False)
+    is_weekend: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+
+class FctRowDemand(Base):
+    """
+    Таблица фактов спроса (Твоя идея!).
+    Связывает ID исходной агрегированной строки со значением спроса.
+    """
+    __tablename__ = "fct_row_demand"
+    __table_args__ = {"schema": "ddm"}
+
+    # row_id — это id из таблицы ppl.webmaster_aggregated
+    row_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    demand: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class FctPageImpressionsClicks(Base):
+    """
+    Атомарная таблица фактов показов и кликов.
+    Зерно: Каждая строка — один конкретный показ или клик.
+    """
+    __tablename__ = "fct_page_impressions_clicks"
+    __table_args__ = {"schema": "ddm"}
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Ссылка на исходную строку для сквозной аналитики и джойна со спросом
+    row_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    
+    dt: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    query_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    page_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    
+    impression_position: Mapped[float] = mapped_column(Float, nullable=False)
+    is_click: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
 
 
 # ==========================================
