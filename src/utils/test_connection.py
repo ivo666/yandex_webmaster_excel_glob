@@ -1,11 +1,20 @@
 import os
 import sys
+from pathlib import Path
 from dotenv import load_dotenv
 from sshtunnel import SSHTunnelForwarder
 from sqlalchemy import create_engine, text
 
-# Загружаем переменные из .env
-load_dotenv()
+# 1. НАСТРОЙКА ПУТЕЙ PYTHON И ЗАГРУЗКА .ENV
+# Находим корень проекта: этот файл лежит в src/utils, значит корень на 2 уровня выше
+current_dir = Path(__file__).resolve().parent
+project_root = current_dir.parent.parent
+
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+# Явно загружаем .env из корня проекта по абсолютному пути
+load_dotenv(dotenv_path=project_root / '.env')
 
 print("--- Проверка конфигурации .env ---")
 ssh_host = os.getenv("SSH_HOST")
@@ -23,7 +32,7 @@ if not all([ssh_host, ssh_user, db_name]):
 print("\n--- Попытка установить соединение ---")
 
 try:
-    # 1. Настройка и запуск SSH-туннеля
+    # 2. Настройка и запуск SSH-туннеля
     with SSHTunnelForwarder(
         (os.getenv("SSH_HOST"), int(os.getenv("SSH_PORT", 22))),
         ssh_username=os.getenv("SSH_USER"),
@@ -33,7 +42,7 @@ try:
         
         print(f"Успешно! SSH-туннель открыт на локальном порту: {tunnel.local_bind_port}")
         
-        # 2. Формирование строки подключения к БД через локальный порт туннеля
+        # 3. Формирование строки подключения к БД через локальный порт туннеля
         db_url = (
             f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}"
             f"@127.0.0.1:{tunnel.local_bind_port}/{os.getenv('DB_NAME')}"
@@ -41,7 +50,7 @@ try:
         
         engine = create_engine(db_url)
         
-        # 3. Тестовый запрос к PostgreSQL
+        # 4. Тестовый запрос к PostgreSQL
         with engine.connect() as connection:
             result = connection.execute(text("SELECT version();"))
             db_version = result.fetchone()[0]
@@ -51,3 +60,4 @@ try:
 
 except Exception as e:
     print(f"\nПроизошла ошибка при подключении:\n{e}")
+
