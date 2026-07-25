@@ -95,9 +95,11 @@ def main():
         # 5.1. Факты атомарного спроса
         demand_loader = DDMDemand()
         demand_loader.get_ppl_demand()
-        demand_loader.get_existing_fct_demand()
-        demand_loader.filter_new_demand()
+        df_queries = demand_loader.get_query_dimension()
+        df_pages = demand_loader.get_page_dimension()
+        demand_loader.enrich_and_filter_demand(df_queries, df_pages)
         demand_loader.load_ddm_demand()
+
         
         # 5.2. Атомарные факты показов и кликов (Расшивка)
         pic_loader = DDMPicLoader()

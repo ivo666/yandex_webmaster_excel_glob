@@ -130,13 +130,19 @@ class DateDimension(Base):
 class FctRowDemand(Base):
     """
     Таблица фактов спроса.
-    Связана по primary_key с row_id из ppl.webmaster_aggregated
+    Связана по primary_key с row_id из ppl.webmaster_aggregated,
+    но теперь содержит прямые ссылки на все аналитические измерения.
     """
     __tablename__ = "fct_row_demand"
     __table_args__ = {"schema": "ddm"}
 
     row_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    dt: Mapped[datetime.date] = mapped_column(Date, ForeignKey("ddm.date_dimension.dt"), nullable=False)
+    query_id: Mapped[int] = mapped_column(Integer, ForeignKey("ddm.query_dimension.id"), nullable=False)
+    page_id: Mapped[int] = mapped_column(Integer, ForeignKey("ddm.page_dimension.id"), nullable=False)
     demand: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
 
 
 class FctPageImpressionsClicks(Base):
